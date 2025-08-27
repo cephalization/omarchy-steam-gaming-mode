@@ -45,6 +45,7 @@ chmod +x setup-gaming-mode.sh
 
 ### Switch to Gaming Mode
 - **Keyboard**: Press `Super + F12`
+- **Launcher**: Use the 'Gaming Mode' app launcher entry
 - **Terminal**: Run `/usr/local/bin/switch-to-gaming`
 
 ### Return to Desktop

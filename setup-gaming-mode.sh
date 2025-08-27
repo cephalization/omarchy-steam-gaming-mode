@@ -213,6 +213,28 @@ add_hyprland_keybind() {
   fi
 }
 
+# Create desktop shortcut for manual switching
+create_desktop_shortcut() {
+  log_info "Creating desktop shortcut for gaming mode..."
+  
+  mkdir -p "$HOME/.local/share/applications"
+  
+  cat > "$HOME/.local/share/applications/gaming-mode.desktop" << EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gaming Mode
+Comment=Switch to Steam Big Picture gaming mode with gamescope
+Exec=/usr/local/bin/switch-to-gaming
+Icon=steam
+Terminal=false
+Categories=Game;
+Keywords=steam;gaming;big picture;
+EOF
+  
+  log_success "Desktop shortcut created"
+}
+
 # Display setup instructions
 show_instructions() {
   echo ""
@@ -230,6 +252,7 @@ show_instructions() {
 
   echo ""
   echo -e "${YELLOW}Alternative methods:${NC}"
+  echo "- Use the 'Gaming Mode' app launcher entry"
   echo "- From terminal: /usr/local/bin/switch-to-gaming"
   echo "- Emergency exit: Ctrl+Alt+F2, then run: pkill -9 gamescope"
   echo ""
@@ -268,6 +291,7 @@ main() {
   echo "• Install gamescope (if not installed)"
   echo "• Create gaming mode switch scripts"
   echo "• Add Super + F12 keybind to Hyprland"
+  echo "• Create desktop shortcut for gaming mode"
   echo ""
   echo -n "Do you want to proceed? (Y/n): "
   read -r response
@@ -288,6 +312,7 @@ main() {
   create_gaming_script
   create_return_script
   add_hyprland_keybind
+  create_desktop_shortcut
   test_scripts
 
   show_instructions
