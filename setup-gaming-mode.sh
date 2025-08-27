@@ -67,23 +67,6 @@ install_dependencies() {
     log_info "Gamescope already installed"
   fi
   
-  # Install python and pip for VDF manipulation
-  if ! command -v python &> /dev/null; then
-    log_info "Installing python..."
-    sudo pacman -S --needed --noconfirm python
-    log_success "Python installed"
-  else
-    log_info "Python already installed"
-  fi
-  
-  # Install python-vdf for Steam shortcuts manipulation
-  log_info "Installing python-vdf library..."
-  sudo pacman -S --needed --noconfirm python-vdf || {
-    log_error "Could not install python-vdf. Non-Steam game auto-addition will be skipped."
-    return 1
-  }
-  log_success "Python VDF library installed"
-  
   # Check if Steam is installed
   if ! command -v steam &> /dev/null; then
     log_warning "Steam is not installed!"
@@ -230,202 +213,27 @@ add_hyprland_keybind() {
   fi
 }
 
-# Create desktop shortcut for manual switching
-create_desktop_shortcut() {
-  log_info "Creating desktop shortcut for gaming mode..."
-  
-  mkdir -p "$HOME/.local/share/applications"
-  
-  cat > "$HOME/.local/share/applications/gaming-mode.desktop" << EOF
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Gaming Mode
-Comment=Switch to Steam Big Picture gaming mode
-Exec=/usr/local/bin/switch-to-gaming
-Icon=steam
-Terminal=false
-Categories=Game;
-Keywords=steam;gaming;big picture;
-EOF
-  
-  log_success "Desktop shortcut created"
-}
-
-# Create Python script to add Non-Steam game
-create_steam_shortcut_script() {
-  log_info "Creating Steam shortcut automation script..."
-  
-  cat > /tmp/add_steam_shortcut.py << 'EOF'
-#!/usr/bin/env python3
-"""
-Script to automatically add 'Return to Desktop' Non-Steam game to Steam
-"""
-import vdf
-import os
-import glob
-import struct
-import binascii
-from pathlib import Path
-
-def find_steam_userdata_path():
-  """Find Steam userdata directory"""
-  possible_paths = [
-    Path.home() / ".steam" / "steam" / "userdata",
-    Path.home() / ".steam" / "root" / "userdata", 
-    Path.home() / ".local" / "share" / "Steam" / "userdata"
-  ]
-  
-  for path in possible_paths:
-    if path.exists():
-      # Find user directories (numeric folders)
-      user_dirs = [d for d in path.iterdir() if d.is_dir() and d.name.isdigit()]
-      if user_dirs:
-        # Use the first user directory found
-        return user_dirs[0] / "config" / "shortcuts.vdf"
-  return None
-
-def calculate_shortcut_id(exe_path, app_name):
-  """Calculate shortcut ID for Steam (simplified version)"""
-  # This is a simplified approach - Steam's actual algorithm is more complex
-  import hashlib
-  combined = f"{exe_path}{app_name}"
-  hash_obj = hashlib.crc32(combined.encode())
-  return hash_obj & 0xffffffff
-
-def add_non_steam_game():
-  """Add Return to Desktop as a Non-Steam game"""
-  shortcuts_path = find_steam_userdata_path()
-  
-  if not shortcuts_path:
-    print("❌ Could not find Steam shortcuts.vdf file")
-    print("   Make sure Steam is installed and you've added at least one Non-Steam game manually")
-    return False
-  
-  if not shortcuts_path.exists():
-    print("❌ shortcuts.vdf file doesn't exist")
-    print("   Please add at least one Non-Steam game manually through Steam first")
-    return False
-  
-  try:
-    # Read existing shortcuts
-    with open(shortcuts_path, 'rb') as f:
-      shortcuts_data = vdf.binary_load(f)
-    
-    # Check if our shortcut already exists
-    shortcuts = shortcuts_data.get('shortcuts', {})
-    for key, shortcut in shortcuts.items():
-      if shortcut.get('AppName') == 'Return to Desktop':
-        print("✅ 'Return to Desktop' shortcut already exists")
-        return True
-    
-    # Find next available key
-    existing_keys = [int(k) for k in shortcuts.keys() if k.isdigit()]
-    next_key = str(max(existing_keys) + 1 if existing_keys else 0)
-    
-    # Create new shortcut entry
-    new_shortcut = {
-      'AppName': 'Return to Desktop',
-      'Exe': '/usr/local/bin/return-to-desktop',
-      'StartDir': '/usr/local/bin/',
-      'icon': '',
-      'ShortcutPath': '',
-      'LaunchOptions': '',
-      'IsHidden': 0,
-      'AllowDesktopConfig': 1,
-      'AllowOverlay': 1,
-      'OpenVR': 0,
-      'Devkit': 0,
-      'DevkitGameID': '',
-      'DevkitOverrideAppID': 0,
-      'LastPlayTime': 0,
-      'FlatpakAppID': '',
-      'tags': {}
-    }
-    
-    # Calculate appid (this is simplified - Steam's algorithm is complex)
-    new_shortcut['appid'] = calculate_shortcut_id('/usr/local/bin/return-to-desktop', 'Return to Desktop')
-    
-    # Add shortcut to collection
-    shortcuts[next_key] = new_shortcut
-    shortcuts_data['shortcuts'] = shortcuts
-    
-    # Backup original file
-    backup_path = str(shortcuts_path) + '.backup'
-    os.rename(shortcuts_path, backup_path)
-    print(f"📁 Backup created: {backup_path}")
-    
-    # Write updated shortcuts
-    with open(shortcuts_path, 'wb') as f:
-      vdf.binary_dump(shortcuts_data, f)
-    
-    print("✅ Successfully added 'Return to Desktop' to Steam Non-Steam games")
-    print("   Restart Steam to see the new shortcut")
-    return True
-    
-  except Exception as e:
-    print(f"❌ Error adding shortcut: {e}")
-    return False
-
-if __name__ == "__main__":
-  add_non_steam_game()
-EOF
-  
-  chmod +x /tmp/add_steam_shortcut.py
-  log_success "Steam shortcut automation script created"
-}
-
-# Try to automatically add the Non-Steam game
-add_steam_shortcut_automatically() {
-  log_info "Attempting to automatically add 'Return to Desktop' to Steam..."
-  
-  # Check if Steam is running (shouldn't be during setup)
-  if pgrep -f "steam" > /dev/null; then
-    log_warning "Steam is currently running. Please close Steam and re-run this script to auto-add the shortcut."
-    return 1
-  fi
-  
-  # Run the Python script to add the shortcut
-  if python /tmp/add_steam_shortcut.py; then
-    log_success "Successfully added 'Return to Desktop' to Steam Non-Steam games!"
-    log_info "The shortcut will appear after you restart Steam"
-    return 0
-  else
-    log_warning "Could not automatically add the shortcut. You'll need to add it manually."
-    return 1
-  fi
-}
-
 # Display setup instructions
 show_instructions() {
-  local auto_shortcut_success=$1
-  
   echo ""
   log_success "Gaming mode setup complete!"
   echo ""
   echo -e "${BLUE}How to use:${NC}"
   echo "1. Press Super + F12 to switch to gaming mode"
-  
-  if [ "$auto_shortcut_success" = "true" ]; then
-    echo "2. 'Return to Desktop' has been automatically added to your Steam library"
-    echo "   - Restart Steam if it's running to see the new shortcut"
-    echo "   - Launch 'Return to Desktop' from Steam Big Picture to return to Hyprland"
-  else
-    echo "2. In Steam Big Picture, manually add the return shortcut:"
-    echo "   - Go to Library"
-    echo "   - Click 'Add a Game' → 'Add a Non-Steam Game'"
-    echo "   - Click 'Browse' and select: /usr/local/bin/return-to-desktop"
-    echo "   - Name it 'Return to Desktop'"
-    echo "   - Launch 'Return to Desktop' from Steam to return to Hyprland"
-  fi
+  echo "2. Press Super + w to return to desktop"
+  echo "Or, add the return shortcut to Steam Big Picture as a Non-Steam game"
+  echo "   - Go to Library"
+  echo "   - Click 'Add a Game' → 'Add a Non-Steam Game'"
+  echo "   - Click 'Browse' and select: /usr/local/bin/return-to-desktop"
+  echo "   - Name it 'Return to Desktop'"
+  echo "   - Launch 'Return to Desktop' from Steam to return to Hyprland"
 
   echo ""
   echo -e "${YELLOW}Alternative methods:${NC}"
-  echo "- Use the 'Gaming Mode' app launcher entry"
   echo "- From terminal: /usr/local/bin/switch-to-gaming"
   echo "- Emergency exit: Ctrl+Alt+F2, then run: pkill -9 gamescope"
   echo ""
-  echo -e "${GREEN}Enjoy your Steam Deck-like gaming experience!${NC}"
+  echo -e "${GREEN}Enjoy your enhanced gaming experience!${NC}"
 }
 
 # Test scripts
@@ -450,20 +258,16 @@ test_scripts() {
 # Main execution
 main() {
   echo -e "${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${BLUE}║              Omarchy Gaming Mode Setup Script            ║${NC}"
-  echo -e "${BLUE}║          Steam Deck-like gaming mode toggle              ║${NC}"
-  echo -e "${BLUE}║        With automatic Non-Steam game integration         ║${NC}"
+  echo -e "${BLUE}║               Omarchy Gaming Mode Setup Script            ║${NC}"
+  echo -e "${BLUE}║            Gaming mode toggle for enhanced gaming         ║${NC}"
   echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
   echo ""
 
   # Check if user wants to proceed
   echo -e "${YELLOW}This script will:${NC}"
   echo "• Install gamescope (if not installed)"
-  echo "• Install Python VDF library for Steam integration"
   echo "• Create gaming mode switch scripts"
   echo "• Add Super + F12 keybind to Hyprland"
-  echo "• Create desktop shortcut"
-  echo "• Automatically add 'Return to Desktop' to Steam (if possible)"
   echo ""
   echo -n "Do you want to proceed? (Y/n): "
   read -r response
@@ -484,22 +288,9 @@ main() {
   create_gaming_script
   create_return_script
   add_hyprland_keybind
-  create_desktop_shortcut
   test_scripts
-  
-  # Try to automatically add Steam shortcut if Steam is available
-  auto_shortcut_success=false
-  if [ "$steam_available" = "true" ]; then
-    create_steam_shortcut_script
-    if add_steam_shortcut_automatically; then
-      auto_shortcut_success=true
-    fi
-  fi
-  
-  show_instructions "$auto_shortcut_success"
-  
-  # Cleanup temp files
-  rm -f /tmp/add_steam_shortcut.py
+
+  show_instructions
 }
 
 # Run main function

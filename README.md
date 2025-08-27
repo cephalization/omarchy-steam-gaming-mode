@@ -1,22 +1,19 @@
 # Omarchy Gaming Mode Toggle
 
-A one-command setup script that adds a **Steam Deck-like gaming mode** to [Omarchy](https://omarchy.org/) (or any Arch Linux + Hyprland system). Switch seamlessly between your productive Hyprland desktop and an optimized Steam Big Picture gaming environment.
+A one-command setup script that strives to add a **Steam Deck-like gaming mode** to [Omarchy](https://omarchy.org/) (or any Arch Linux + Hyprland system). Switch seamlessly between your productive Hyprland desktop and an optimized Steam Big Picture gaming environment.
 
 ## 🎮 What This Does
 
 - **Toggle between environments**: Press `Super + F12` to instantly switch from Hyprland to Steam Big Picture mode
 - **Gaming-optimized**: Uses `gamescope` compositor for better gaming performance and compatibility
-- **Seamless return**: Automatically adds "Return to Desktop" shortcut in Steam to get back to Hyprland
 - **Zero configuration**: Everything works out of the box after running the script
 
 ## ✨ Features
 
 - 🚀 **One-command setup** - Run the script and you're done
-- 🎯 **Automatic Steam integration** - Non-Steam game shortcut added automatically
 - ⌨️ **Keyboard shortcut** - `Super + F12` to switch to gaming mode
-- 🖥️ **Desktop launcher** - Optional app menu entry for manual switching
-- 🛡️ **Safe installation** - Checks system compatibility and creates backups
 - 🔄 **Bi-directional switching** - Easy return to desktop from gaming mode
+- 🖥️ **Automatic resolution detection** - Uses your current display resolution and refresh rate
 
 ## 📋 Requirements
 
@@ -48,36 +45,24 @@ chmod +x setup-gaming-mode.sh
 
 ### Switch to Gaming Mode
 - **Keyboard**: Press `Super + F12`
-- **App Launcher**: Launch "Gaming Mode" from your app menu
 - **Terminal**: Run `/usr/local/bin/switch-to-gaming`
 
 ### Return to Desktop
-- **From Steam Big Picture**: Launch "Return to Desktop" from your library
+- **From Steam Big Picture**: Press `Super + w` or add the return shortcut to Steam Big Picture as a Non-Steam game
 - **Emergency exit**: `Ctrl + Alt + F2`, then run `pkill -9 gamescope`
 
 ## 🔧 What Gets Installed
 
 The script automatically:
 - Installs `gamescope` (Steam's gaming compositor)
-- Installs Python VDF library for Steam integration
 - Creates gaming mode switch scripts in `/usr/local/bin/`
 - Adds `Super + F12` keybind to your Hyprland config
-- Creates desktop application shortcut
-- Adds "Return to Desktop" Non-Steam game to Steam library
 
 ## 🛠️ Troubleshooting
 
-### Steam shortcut wasn't added automatically
-If the script couldn't automatically add the "Return to Desktop" shortcut:
-1. Open Steam Big Picture mode
-2. Go to **Library**
-3. Click **"Add a Game" → "Add a Non-Steam Game"**
-4. Browse to `/usr/local/bin/return-to-desktop`
-5. Name it "Return to Desktop"
-
 ### Gaming mode won't start
 - Ensure Steam is installed: Install via Omarchy menu first
-- Test manually: `gamescope -e -- steam -tenfoot`
+- Test manually: `gamescope -e -f -W 2880 -H 1920 -r 120 -- steam -tenfoot`
 - Check logs: Gaming mode issues are usually gamescope-related
 
 ### Can't return to desktop
