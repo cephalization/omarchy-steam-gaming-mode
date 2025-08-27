@@ -204,8 +204,19 @@ EOF
 add_hyprland_keybind() {
   log_info "Adding gaming mode keybind to Hyprland config..."
   
-  local config_file="$HOME/.config/hypr/hyprland.conf"
+  local config_file="$HOME/.config/hypr/bindings.conf"
   local keybind="bind = SUPER, F12, exec, /usr/local/bin/switch-to-gaming"
+
+  # check if the file exists
+  if [ ! -f "$config_file" ]; then
+    log_error "Hyprland config file not found at $config_file"
+    log_info "Trying $HOME/.config/hypr/hyprland.conf"
+    config_file="$HOME/.config/hypr/hyprland.conf"
+    if [ ! -f "$config_file" ]; then
+      log_error "Hyprland config file not found at $config_file"
+      exit 1
+    fi
+  fi
   
   # Check if keybind already exists
   if grep -q "switch-to-gaming" "$config_file"; then
