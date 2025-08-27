@@ -288,7 +288,8 @@ main() {
 
   # Check if user wants to proceed
   echo -e "${YELLOW}This script will:${NC}"
-  echo "• Install gamescope (if not installed)"
+  echo "• Install gamescope (if not installed) for gaming mode"
+  echo "• Install mangohud (if not installed) for performance monitoring"
   echo "• Create gaming mode switch scripts"
   echo "• Add Super + F12 keybind to Hyprland"
   echo "• Create desktop shortcut for gaming mode"

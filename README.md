@@ -56,6 +56,7 @@ chmod +x setup-gaming-mode.sh
 
 The script automatically:
 - Installs `gamescope` (Steam's gaming compositor)
+- Installs `mangohud` (performance monitoring)
 - Creates gaming mode switch scripts in `/usr/local/bin/`
 - Adds `Super + F12` keybind to your Hyprland config
 
@@ -69,6 +70,11 @@ The script automatically:
 ### Can't return to desktop
 - Use the emergency exit: `Ctrl + Alt + F2`, then `pkill -9 gamescope`
 - Check if the "Return to Desktop" shortcut exists in Steam
+
+### How do I turn off performance monitoring?
+- There is no easy toggle right now, but you can remove the `--mangoapp` parameter from the `gamescope` command in the `switch-to-gaming` script.
+  - `sudo sed -i 's/--mangoapp//' /usr/local/bin/switch-to-gaming`
+  - Re-run the script to bring it back
 
 ## 🎮 Why This Is Awesome
 
