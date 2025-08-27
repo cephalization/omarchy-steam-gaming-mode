@@ -28,12 +28,12 @@ A one-command setup script that adds a **Steam Deck-like gaming mode** to [Omarc
 
 ### Quick Install
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/omarchy-gaming-mode/main/setup-gaming-mode.sh | bash
+curl -fsSL https://raw.githubusercontent.com/cephalization/omarchy-gaming-mode/main/setup-gaming-mode.sh | bash
 ```
 
 ### Manual Install
 ```bash
-git clone https://github.com/YOUR_USERNAME/omarchy-gaming-mode.git
+git clone https://github.com/cephalization/omarchy-gaming-mode.git
 cd omarchy-gaming-mode
 chmod +x setup-gaming-mode.sh
 ./setup-gaming-mode.sh
