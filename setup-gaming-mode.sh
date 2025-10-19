@@ -161,6 +161,23 @@ read -r WIDTH HEIGHT REFRESH <<< "$(get_display_info)"
 
 echo "Using display configuration: ${WIDTH}x${HEIGHT}@${REFRESH}Hz"
 
+notify-send "Starting steam big picture! This may take a moment, give it a few..."
+
+echo "Disable hypridle (idle lock)"
+pkill -9 hypridle
+notify-send "Idle lock disabled. Toggle it back on when done!"
+
+STATE_FILE=~/.local/state/omarchy/toggles/screensaver-off
+
+echo "Disable screensaver"
+if [[ -f $STATE_FILE ]]; then
+  notify-send "Screensaver disabled"
+else
+  mkdir -p "$(dirname $STATE_FILE)"
+  touch $STATE_FILE
+  notify-send "Screensaver disabled"
+fi
+
 # Launch gamescope as nested session with current display settings
 exec /usr/bin/gamescope --mangoapp -f -W "$WIDTH" -H "$HEIGHT" -r "$REFRESH" -e -- /usr/bin/steam -tenfoot
 EOF
