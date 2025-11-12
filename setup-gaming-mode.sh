@@ -102,6 +102,43 @@ create_gaming_script() {
 #!/bin/bash
 # Launch gaming mode with current display resolution and refresh rate
 
+# Function to detect and kill running Steam instances
+kill_steam_instances() {
+  local steam_pids
+  steam_pids=$(pgrep -f "steam" 2>/dev/null || true)
+  
+  if [ -n "$steam_pids" ]; then
+    echo "Found running Steam instances: $steam_pids"
+    notify-send "Steam is already running" "Closing existing Steam instances before starting gaming mode..."
+    echo "Sending TERM signal to Steam processes..."
+    pkill -TERM -f "steam"
+    
+    # Wait up to 30 seconds for graceful termination
+    local timeout=30
+    while [ $timeout -gt 0 ] && pgrep -f "steam" >/dev/null 2>&1; do
+      echo "Waiting for Steam to terminate... ($timeout seconds remaining)"
+      if [ $((timeout % 3)) -eq 0 ]; then
+        notify-send "Waiting for Steam to close" "Please wait... ($timeout seconds remaining)"
+      fi
+      sleep 1
+      timeout=$((timeout - 1))
+    done
+    
+    # Check if Steam is still running and force kill if necessary
+    if pgrep -f "steam" >/dev/null 2>&1; then
+      echo "Steam did not terminate gracefully, sending KILL signal..."
+      notify-send "Force closing Steam" "Steam did not close gracefully, forcing termination..."
+      pkill -KILL -f "steam"
+      sleep 5
+    fi
+    
+    echo "Steam instances terminated"
+    notify-send "Steam closed" "All Steam instances have been terminated"
+  else
+    echo "No running Steam instances found"
+  fi
+}
+
 # Get current display info from Hyprland
 get_display_info() {
   local monitors_info
@@ -155,6 +192,9 @@ except:
   
   echo "$width $height $refresh"
 }
+
+# Kill existing Steam instances first
+kill_steam_instances
 
 # Get current display configuration
 read -r WIDTH HEIGHT REFRESH <<< "$(get_display_info)"
