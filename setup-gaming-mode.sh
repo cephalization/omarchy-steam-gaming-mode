@@ -102,6 +102,32 @@ create_gaming_script() {
 #!/bin/bash
 # Launch gaming mode with current display resolution and refresh rate
 
+# Cleanup function to restore Idle lock
+# This runs automatically when the script exits (successfully or interrupted)
+restore_system_state() {
+    echo "Steam session ended. Restoring system services..."
+    
+    # 1. Restore Screensaver (Omarchy specific)
+    STATE_FILE=~/.local/state/omarchy/toggles/screensaver-off
+    if [[ -f $STATE_FILE ]]; then
+        rm "$STATE_FILE"
+        echo "Removed screensaver inhibit file."
+    fi
+
+    # 2. Restore Hypridle (Idle lock)
+    # Check if hypridle is running; if not, start it in the background
+    if ! pgrep -x "hypridle" > /dev/null; then
+        echo "Restarting hypridle..."
+        hypridle >/dev/null 2>&1 & 
+        # Note: Using & to background it so it survives this script exiting
+    fi
+
+    notify-send "Gaming Mode Ended" "Screensaver and Idle Lock re-enabled."
+}
+
+# Register the trap to run the function above on EXIT
+trap restore_system_state EXIT
+
 # Function to detect and kill running Steam instances
 kill_steam_instances() {
   local steam_pids
@@ -219,7 +245,7 @@ else
 fi
 
 # Launch gamescope as nested session with current display settings
-exec /usr/bin/gamescope --mangoapp -f -W "$WIDTH" -H "$HEIGHT" -r "$REFRESH" -e -- /usr/bin/steam -tenfoot
+/usr/bin/gamescope --mangoapp -f -W "$WIDTH" -H "$HEIGHT" -r "$REFRESH" -e -- /usr/bin/steam -tenfoot
 EOF
   
   sudo chmod +x /usr/local/bin/switch-to-gaming
