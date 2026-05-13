@@ -46,8 +46,8 @@ check_system() {
   fi
   
   # Check if Hyprland config exists
-  if [ ! -f "$HOME/.config/hypr/hyprland.conf" ]; then
-    log_error "Hyprland configuration file not found at ~/.config/hypr/hyprland.conf"
+  if [ ! -f "$HOME/.config/hypr/hyprland.conf" ] && [ ! -f "$HOME/.config/hypr/hyprland.lua" ]; then
+    log_error "Hyprland configuration file not found (checked hyprland.conf and hyprland.lua)"
     exit 1
   fi
   
@@ -269,31 +269,51 @@ EOF
 # Add keybind to Hyprland config
 add_hyprland_keybind() {
   log_info "Adding gaming mode keybind to Hyprland config..."
-  
-  local config_file="$HOME/.config/hypr/bindings.conf"
-  local keybind="bind = SUPER, F12, exec, /usr/local/bin/switch-to-gaming"
 
-  # check if the file exists
-  if [ ! -f "$config_file" ]; then
-    log_error "Hyprland config file not found at $config_file"
-    log_info "Trying $HOME/.config/hypr/hyprland.conf"
+  local config_file=""
+  local is_lua=false
+
+  # Detect config type: prefer dedicated bindings file, fall back to main config.
+  # Lua-based Omarchy installs use hyprland.lua and source hypr/bindings.lua;
+  # traditional installs use hyprland.conf and may source bindings.conf.
+  if [ -f "$HOME/.config/hypr/bindings.lua" ]; then
+    config_file="$HOME/.config/hypr/bindings.lua"
+    is_lua=true
+  elif [ -f "$HOME/.config/hypr/bindings.conf" ]; then
+    config_file="$HOME/.config/hypr/bindings.conf"
+  elif [ -f "$HOME/.config/hypr/hyprland.lua" ]; then
+    config_file="$HOME/.config/hypr/hyprland.lua"
+    is_lua=true
+  elif [ -f "$HOME/.config/hypr/hyprland.conf" ]; then
     config_file="$HOME/.config/hypr/hyprland.conf"
-    if [ ! -f "$config_file" ]; then
-      log_error "Hyprland config file not found at $config_file"
-      exit 1
-    fi
+  else
+    log_error "No Hyprland config file found in ~/.config/hypr/"
+    exit 1
   fi
-  
+
   # Check if keybind already exists
   if grep -q "switch-to-gaming" "$config_file"; then
-    log_info "Gaming mode keybind already exists in Hyprland config"
-  else
-    # Add keybind to config file
-    echo "" >> "$config_file"
-    echo "# Gaming mode toggle keybind (added by setup script)" >> "$config_file"
-    echo "$keybind" >> "$config_file"
-    log_success "Gaming mode keybind added (Super + F12)"
+    log_info "Gaming mode keybind already exists in $config_file"
+    return
   fi
+
+  if $is_lua; then
+    # Lua-based Omarchy config uses the hl.bind() API
+    {
+      echo ""
+      echo "-- Gaming mode toggle keybind (added by setup script)"
+      echo 'hl.bind("SUPER + F12", hl.dsp.exec_cmd("/usr/local/bin/switch-to-gaming"), { description = "Gaming mode toggle" })'
+    } >> "$config_file"
+  else
+    # Traditional .conf syntax
+    {
+      echo ""
+      echo "# Gaming mode toggle keybind (added by setup script)"
+      echo "bind = SUPER, F12, exec, /usr/local/bin/switch-to-gaming"
+    } >> "$config_file"
+  fi
+
+  log_success "Gaming mode keybind added (Super + F12) to $config_file"
 }
 
 # Create desktop shortcut for manual switching
