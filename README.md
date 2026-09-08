@@ -49,7 +49,7 @@ chmod +x setup-gaming-mode.sh
 - **Terminal**: Run `/usr/local/bin/switch-to-gaming`
 
 ### Return to Desktop
-- **From Steam Big Picture**: Press `Super + w` or add the return shortcut to Steam Big Picture as a Non-Steam game
+- **From Steam Big Picture**: Press `Super + W` (stops mangoapp, then Steam/gamescope) or add `/usr/local/bin/return-to-desktop` to Steam Big Picture as a Non-Steam game
 - **Emergency exit**: `Ctrl + Alt + F2`, then run `pkill -9 gamescope`
 
 ## 🔧 What Gets Installed
@@ -57,8 +57,9 @@ chmod +x setup-gaming-mode.sh
 The script automatically:
 - Installs `gamescope` (Steam's gaming compositor)
 - Installs `mangohud` (performance monitoring)
-- Creates gaming mode switch scripts in `/usr/local/bin/`
+- Creates gaming mode switch scripts in `/usr/local/bin/` (`switch-to-gaming`, `return-to-desktop`, `close-window-or-gaming`)
 - Adds `Super + F12` keybind to your Hyprland config
+- Rebinds `Super + W` so closing gamescope stops mangoapp first (otherwise mangoapp crashes)
 
 ## 🛠️ Troubleshooting
 
@@ -70,6 +71,10 @@ The script automatically:
 ### Can't return to desktop
 - Use the emergency exit: `Ctrl + Alt + F2`, then `pkill -9 gamescope`
 - Check if the "Return to Desktop" shortcut exists in Steam
+
+### mangoapp crashes when leaving gaming mode
+- `Super + W` used to close the gamescope window while mangoapp was still attached.
+- Re-run `setup-gaming-mode.sh` so Super+W runs `close-window-or-gaming` (stops mangoapp, then Steam).
 
 ### How do I turn off performance monitoring?
 - There is no easy toggle right now, but you can remove the `--mangoapp` parameter from the `gamescope` command in the `switch-to-gaming` script.

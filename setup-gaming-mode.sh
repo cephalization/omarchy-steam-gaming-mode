@@ -106,6 +106,10 @@ create_gaming_script() {
 # This runs automatically when the script exits (successfully or interrupted)
 restore_system_state() {
     echo "Steam session ended. Restoring system services..."
+
+    # Reap mangoapp if it is still around (too late to prevent a crash if
+    # gamescope already died first; close-window-or-gaming stops it earlier).
+    pkill -TERM -x mangoapp 2>/dev/null || true
     
     # 1. Restore Screensaver (Omarchy specific)
     STATE_FILE=~/.local/state/omarchy/toggles/screensaver-off
@@ -258,12 +262,48 @@ create_return_script() {
   
   sudo tee /usr/local/bin/return-to-desktop > /dev/null << 'EOF'
 #!/bin/bash
-# Kill gamescope/steam and return to Hyprland
-pkill -9 gamescope
+# Return to Hyprland. Stop mangoapp first so it does not crash when gamescope exits.
+pkill -TERM -x mangoapp 2>/dev/null || true
+sleep 0.15
+steam -shutdown >/dev/null 2>&1 || true
+sleep 0.4
+pkill -TERM gamescope 2>/dev/null || true
+sleep 0.3
+pkill -9 gamescope 2>/dev/null || true
 EOF
   
   sudo chmod +x /usr/local/bin/return-to-desktop
   log_success "Return to desktop script created at /usr/local/bin/return-to-desktop"
+}
+
+# Super+W helper: normal close, or clean gaming-mode exit when gamescope is focused
+create_close_window_script() {
+  log_info "Creating close-window helper script..."
+
+  sudo tee /usr/local/bin/close-window-or-gaming > /dev/null << 'EOF'
+#!/bin/bash
+# Close the active window. If Steam gaming mode (gamescope) is focused,
+# stop mangoapp first so it does not crash when gamescope disappears.
+
+active_class() {
+  hyprctl activewindow -j 2>/dev/null | python3 -c "
+import json, sys
+try:
+    print(json.load(sys.stdin).get('class') or '')
+except Exception:
+    print('')
+" 2>/dev/null
+}
+
+if [[ "$(active_class)" == "gamescope" ]]; then
+  exec /usr/local/bin/return-to-desktop
+fi
+
+hyprctl dispatch killactive >/dev/null
+EOF
+
+  sudo chmod +x /usr/local/bin/close-window-or-gaming
+  log_success "Close-window helper created at /usr/local/bin/close-window-or-gaming"
 }
 
 # Add keybind to Hyprland config
@@ -291,29 +331,53 @@ add_hyprland_keybind() {
     exit 1
   fi
 
-  # Check if keybind already exists
-  if grep -q "switch-to-gaming" "$config_file"; then
-    log_info "Gaming mode keybind already exists in $config_file"
-    return
-  fi
-
   if $is_lua; then
-    # Lua-based Omarchy config uses the hl.bind() API
-    {
-      echo ""
-      echo "-- Gaming mode toggle keybind (added by setup script)"
-      echo 'hl.bind("SUPER + F12", hl.dsp.exec_cmd("/usr/local/bin/switch-to-gaming"), { description = "Gaming mode toggle" })'
-    } >> "$config_file"
-  else
-    # Traditional .conf syntax
-    {
-      echo ""
-      echo "# Gaming mode toggle keybind (added by setup script)"
-      echo "bind = SUPER, F12, exec, /usr/local/bin/switch-to-gaming"
-    } >> "$config_file"
-  fi
+    if grep -q "switch-to-gaming" "$config_file"; then
+      log_info "Gaming mode keybind already exists in $config_file"
+    else
+      {
+        echo ""
+        echo "-- Gaming mode toggle keybind (added by setup script)"
+        echo 'hl.bind("SUPER + F12", hl.dsp.exec_cmd("/usr/local/bin/switch-to-gaming"), { description = "Gaming mode toggle" })'
+      } >> "$config_file"
+      log_success "Gaming mode keybind added (Super + F12) to $config_file"
+    fi
 
-  log_success "Gaming mode keybind added (Super + F12) to $config_file"
+    if grep -q "close-window-or-gaming" "$config_file"; then
+      log_info "Close window / return-from-gaming keybind already exists in $config_file"
+    else
+      {
+        echo ""
+        echo "-- Close window: stop mangoapp before gamescope so Super+W can leave gaming mode cleanly"
+        echo 'hl.unbind("SUPER + W")'
+        echo 'hl.bind("SUPER + W", hl.dsp.exec_cmd("/usr/local/bin/close-window-or-gaming"), { description = "Close window" })'
+      } >> "$config_file"
+      log_success "Super + W rebound to close-window-or-gaming in $config_file"
+    fi
+  else
+    if grep -q "switch-to-gaming" "$config_file"; then
+      log_info "Gaming mode keybind already exists in $config_file"
+    else
+      {
+        echo ""
+        echo "# Gaming mode toggle keybind (added by setup script)"
+        echo "bind = SUPER, F12, exec, /usr/local/bin/switch-to-gaming"
+      } >> "$config_file"
+      log_success "Gaming mode keybind added (Super + F12) to $config_file"
+    fi
+
+    if grep -q "close-window-or-gaming" "$config_file"; then
+      log_info "Close window / return-from-gaming keybind already exists in $config_file"
+    else
+      {
+        echo ""
+        echo "# Close window: stop mangoapp before gamescope so Super+W can leave gaming mode cleanly"
+        echo "unbind = SUPER, W"
+        echo "bind = SUPER, W, exec, /usr/local/bin/close-window-or-gaming"
+      } >> "$config_file"
+      log_success "Super + W rebound to close-window-or-gaming in $config_file"
+    fi
+  fi
 }
 
 # Create desktop shortcut for manual switching
@@ -345,7 +409,7 @@ show_instructions() {
   echo ""
   echo -e "${BLUE}How to use:${NC}"
   echo "1. Press Super + F12 to switch to gaming mode"
-  echo "2. Press Super + w to return to desktop"
+  echo "2. Press Super + W to return to desktop (stops mangoapp, then Steam/gamescope)"
   echo "Or, add the return shortcut to Steam Big Picture as a Non-Steam game"
   echo "   - Go to Library"
   echo "   - Click 'Add a Game' → 'Add a Non-Steam Game'"
@@ -379,6 +443,13 @@ test_scripts() {
     log_error "Return to desktop script is not executable"
     exit 1
   fi
+
+  if [ -x "/usr/local/bin/close-window-or-gaming" ]; then
+    log_success "Close-window helper script is executable"
+  else
+    log_error "Close-window helper script is not executable"
+    exit 1
+  fi
 }
 
 # Main execution
@@ -395,6 +466,7 @@ main() {
   echo "• Install mangohud (if not installed) for performance monitoring"
   echo "• Create gaming mode switch scripts"
   echo "• Add Super + F12 keybind to Hyprland"
+  echo "• Rebind Super + W so leaving gamescope stops mangoapp first"
   echo "• Create desktop shortcut for gaming mode"
   echo ""
   echo -n "Do you want to proceed? (Y/n): "
@@ -415,6 +487,7 @@ main() {
   
   create_gaming_script
   create_return_script
+  create_close_window_script
   add_hyprland_keybind
   create_desktop_shortcut
   test_scripts
